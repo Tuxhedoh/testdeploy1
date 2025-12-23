@@ -39,7 +39,7 @@ export async function suggestCaptions(base64Image: string, tone: string = 'sarca
           },
         },
         {
-          text: `Analyze this image and suggest 5 pairs of hilarious, relevant meme captions (Top text and Bottom text) in a "${tone}" tone. Also suggest a HEX text color that would look best on this image. Return ONLY a JSON array of objects with 'top', 'bottom', and 'suggestedColor' (hex) properties.`,
+          text: `Analyze this image and suggest 5 pairs of hilarious, relevant meme captions (Top text and Bottom text) in a "${tone}" tone. Return ONLY a JSON array of objects with 'top' and 'bottom' properties.`,
         },
       ],
     },
@@ -52,9 +52,8 @@ export async function suggestCaptions(base64Image: string, tone: string = 'sarca
           properties: {
             top: { type: Type.STRING },
             bottom: { type: Type.STRING },
-            suggestedColor: { type: Type.STRING },
           },
-          required: ["top", "bottom", "suggestedColor"],
+          required: ["top", "bottom"],
         },
       },
     },

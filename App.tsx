@@ -184,7 +184,7 @@ const App: React.FC = () => {
           bottomText: res[0].bottom,
           topFontSize: DEFAULT_FONT_SIZE,
           bottomFontSize: DEFAULT_FONT_SIZE,
-          textColor: res[0].suggestedColor || '#ffffff',
+          textColor: '#ffffff',
           imageScale: 1,
           imageXOffset: 0,
           imageYOffset: 0,
@@ -413,13 +413,12 @@ const App: React.FC = () => {
                       ...prev,
                       topText: s.top,
                       bottomText: s.bottom,
-                      textColor: s.suggestedColor || prev.textColor
+                      textColor: '#ffffff'
                     }))}
                     className="group text-left bg-white/5 hover:bg-white/10 p-3 rounded-xl transition-all border border-transparent hover:border-indigo-500/30 active:scale-[0.98]"
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Option #{idx + 1}</span>
-                      <div className="w-3 h-3 rounded-full shadow-inner" style={{ backgroundColor: s.suggestedColor }} />
                     </div>
                     <p className="text-xs text-white font-black uppercase truncate">{s.top}</p>
                     <p className="text-xs text-indigo-400 font-black uppercase truncate">{s.bottom}</p>
