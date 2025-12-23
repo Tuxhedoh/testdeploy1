@@ -1,5 +1,5 @@
 <div align="center">
-<img width="1200" height="475" alt="MemeGenie AI Banner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+<img width="200" height="200" alt="MemeGenie AI Logo" src="public/logo.png" />
 
 # 🧞‍♂️ MemeGenie AI 2.0
 
