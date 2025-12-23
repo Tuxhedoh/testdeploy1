@@ -12,8 +12,9 @@ const SNAP_POINTS_X = [5, 50, 95]; // Left, Center, Right
 
 const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isDragging, setIsDragging] = useState<'top' | 'bottom' | null>(null);
+  const [isDragging, setIsDragging] = useState<'top' | 'bottom' | 'image' | null>(null);
   const [activeGuides, setActiveGuides] = useState<{ x?: number; y?: number }>({});
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -60,6 +61,7 @@ const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
       const maxWidth = 800;
       const scale = maxWidth / img.width;
       const textMaxWidth = maxWidth * 0.9;
+      const imgScale = state.imageScale || 1;
 
       // Prepare fonts for measuring
       const topFont = state.style === 'modern'
@@ -79,7 +81,6 @@ const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
       let imageYOffset = 0;
 
       if (state.style === 'modern') {
-        // Add space at the top for modern style based on wrapped lines
         const boxHeight = 100 + (topLines.length * state.topFontSize * 0.6);
         canvasHeight += boxHeight;
         imageYOffset = boxHeight;
@@ -99,7 +100,6 @@ const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
       } else if (state.style === 'demotivational') {
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // Inner white border
         ctx.strokeStyle = 'white';
         ctx.lineWidth = 2;
         ctx.strokeRect(48, 48, (canvas.width - 96), (img.height * scale) + 4);
@@ -107,84 +107,61 @@ const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
 
-      // Draw image
-      const imgX = state.style === 'demotivational' ? 50 : 0;
-      ctx.drawImage(img, imgX, imageYOffset, maxWidth, img.height * scale);
+      // Draw image with scale and offset
+      const imgX = (state.style === 'demotivational' ? 50 : 0) + (state.imageXOffset || 0);
+      const imgY = imageYOffset + (state.imageYOffset || 0);
+      const drawWidth = maxWidth * imgScale;
+      const drawHeight = (img.height * scale) * imgScale;
 
-      // Draw active guides if dragging
-      if (isDragging) {
+      ctx.save();
+      if (state.style === 'demotivational') {
+        // Clip to legal image area for demotivational
+        ctx.beginPath();
+        ctx.rect(50, 50, maxWidth, img.height * scale);
+        ctx.clip();
+      }
+      ctx.drawImage(img, imgX, imgY, drawWidth, drawHeight);
+      ctx.restore();
+
+      // ... rest of draw guides and lines ...
+      if (isDragging && isDragging !== 'image') {
         ctx.save();
         ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = '#6366f1'; // Indigo-500
+        ctx.strokeStyle = '#6366f1';
         ctx.lineWidth = 1;
-
         if (activeGuides.x !== undefined) {
           const gx = (canvas.width * activeGuides.x) / 100;
-          ctx.beginPath();
-          ctx.moveTo(gx, 0);
-          ctx.lineTo(gx, canvas.height);
-          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, canvas.height); ctx.stroke();
         }
         if (activeGuides.y !== undefined) {
           const gy = (canvas.height * activeGuides.y) / 100;
-          ctx.beginPath();
-          ctx.moveTo(0, gy);
-          ctx.lineTo(canvas.width, gy);
-          ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(canvas.width, gy); ctx.stroke();
         }
         ctx.restore();
       }
 
-      // Draw text
       const drawTextLines = (lines: string[], xPercent: number, yPercent: number, isBottom: boolean, font: string, fontSize: number) => {
         const x = (canvas.width * xPercent) / 100;
         const y = (canvas.height * yPercent) / 100;
-
-        ctx.save();
-        ctx.font = font;
+        ctx.save(); ctx.font = font;
 
         if (state.style === 'modern' && !isBottom) {
-          ctx.fillStyle = 'black';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          lines.forEach((line, i) => {
-            ctx.fillText(line, 20, 20 + i * (fontSize * 1.1));
-          });
+          ctx.fillStyle = 'black'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+          lines.forEach((line, i) => ctx.fillText(line, 20, 20 + i * (fontSize * 1.1)));
         } else if (state.style === 'demotivational') {
-          ctx.fillStyle = 'white';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'top';
+          ctx.fillStyle = 'white'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
           const textY = isBottom ? (img.height * scale) + imageYOffset + 20 : (img.height * scale) + imageYOffset + 70;
-          lines.forEach((line, i) => {
-            ctx.fillText(line, canvas.width / 2, textY + i * (fontSize * 1.2));
-          });
+          lines.forEach((line, i) => ctx.fillText(line, canvas.width / 2, textY + i * (fontSize * 1.2)));
         } else {
-          // Classic Style
-          ctx.fillStyle = state.textColor;
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = Math.max(2, fontSize / 10);
-
-          // Determine alignment based on position
+          ctx.fillStyle = state.textColor; ctx.strokeStyle = 'black'; ctx.lineWidth = Math.max(2, fontSize / 10);
           let textAlign: CanvasTextAlign = 'center';
-          if (xPercent <= 10) textAlign = 'left';
-          else if (xPercent >= 90) textAlign = 'right';
-
-          ctx.textAlign = textAlign;
-          ctx.textBaseline = isBottom ? 'bottom' : 'top';
-
-          // Adjust X for left/right alignment to respect margins
-          let drawX = x;
-          const horizontalMargin = (canvas.width * 5) / 100;
-          if (textAlign === 'left') drawX = horizontalMargin;
-          if (textAlign === 'right') drawX = canvas.width - horizontalMargin;
-
+          if (xPercent <= 10) textAlign = 'left'; else if (xPercent >= 90) textAlign = 'right';
+          ctx.textAlign = textAlign; ctx.textBaseline = isBottom ? 'bottom' : 'top';
+          let drawX = x; const horizontalMargin = (canvas.width * 5) / 100;
+          if (textAlign === 'left') drawX = horizontalMargin; if (textAlign === 'right') drawX = canvas.width - horizontalMargin;
           lines.forEach((line, i) => {
-            const lineY = !isBottom
-              ? y + i * (fontSize * 1.1)
-              : y - (lines.length - 1 - i) * (fontSize * 1.1);
-
-            ctx.strokeText(line, drawX, lineY);
-            ctx.fillText(line, drawX, lineY);
+            const lineY = !isBottom ? y + i * (fontSize * 1.1) : y - (lines.length - 1 - i) * (fontSize * 1.1);
+            ctx.strokeText(line, drawX, lineY); ctx.fillText(line, drawX, lineY);
           });
         }
         ctx.restore();
@@ -196,19 +173,24 @@ const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
   }, [state, isDragging, activeGuides]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (state.style !== 'classic') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
 
-    const topY = (canvas.height * state.topOffset) / 100;
-    const bottomY = (canvas.height * state.bottomOffset) / 100;
+    if (state.style === 'classic') {
+      const topY = (canvas.height * state.topOffset) / 100;
+      const bottomY = (canvas.height * state.bottomOffset) / 100;
+      if (Math.abs(y - topY) < 60) { setIsDragging('top'); return; }
+      if (Math.abs(y - bottomY) < 60) { setIsDragging('bottom'); return; }
+    }
 
-    if (Math.abs(y - topY) < 60) setIsDragging('top');
-    else if (Math.abs(y - bottomY) < 60) setIsDragging('bottom');
+    // Default to image dragging if not on text
+    setIsDragging('image');
+    setDragStart({ x: e.clientX, y: e.clientY });
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -216,33 +198,28 @@ const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    if (isDragging === 'image' && dragStart) {
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      onUpdateState({
+        imageXOffset: (state.imageXOffset || 0) + dx,
+        imageYOffset: (state.imageYOffset || 0) + dy
+      });
+      setDragStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
     const rect = canvas.getBoundingClientRect();
     let y = ((e.clientY - rect.top) / rect.height) * 100;
     let x = ((e.clientX - rect.left) / rect.width) * 100;
-
     const active: { x?: number; y?: number } = {};
-
     for (const snapX of SNAP_POINTS_X) {
-      if (Math.abs(x - snapX) < SNAP_THRESHOLD) {
-        x = snapX;
-        active.x = snapX;
-        break;
-      }
+      if (Math.abs(x - snapX) < SNAP_THRESHOLD) { x = snapX; active.x = snapX; break; }
     }
-
     const otherX = isDragging === 'top' ? (state.bottomX ?? 50) : (state.topX ?? 50);
-    if (Math.abs(x - otherX) < SNAP_THRESHOLD) {
-      x = otherX;
-      active.x = otherX;
-    }
-
-    if (Math.abs(y - 50) < SNAP_THRESHOLD) {
-      y = 50;
-      active.y = 50;
-    }
-
+    if (Math.abs(x - otherX) < SNAP_THRESHOLD) { x = otherX; active.x = otherX; }
+    if (Math.abs(y - 50) < SNAP_THRESHOLD) { y = 50; active.y = 50; }
     setActiveGuides(active);
-
     onUpdateState({
       [isDragging === 'top' ? 'topOffset' : 'bottomOffset']: y,
       [isDragging === 'top' ? 'topX' : 'bottomX']: x
@@ -250,65 +227,61 @@ const MemeCanvas: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (state.style !== 'classic') return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
+    const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
+    const x = (touch.clientX - rect.left) * scaleX;
     const y = (touch.clientY - rect.top) * scaleY;
 
-    const topY = (canvas.height * state.topOffset) / 100;
-    const bottomY = (canvas.height * state.bottomOffset) / 100;
-
-    if (Math.abs(y - topY) < 60) {
-      setIsDragging('top');
-      e.preventDefault(); // Prevent scrolling while dragging
-    } else if (Math.abs(y - bottomY) < 60) {
-      setIsDragging('bottom');
-      e.preventDefault(); // Prevent scrolling while dragging
+    if (state.style === 'classic') {
+      const topY = (canvas.height * state.topOffset) / 100;
+      const bottomY = (canvas.height * state.bottomOffset) / 100;
+      if (Math.abs(y - topY) < 60) { setIsDragging('top'); e.preventDefault(); return; }
+      if (Math.abs(y - bottomY) < 60) { setIsDragging('bottom'); e.preventDefault(); return; }
     }
+
+    setIsDragging('image');
+    setDragStart({ x: touch.clientX, y: touch.clientY });
+    e.preventDefault();
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDragging || !onUpdateState) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    const touch = e.touches[0];
+
+    if (isDragging === 'image' && dragStart) {
+      const dx = touch.clientX - dragStart.x;
+      const dy = touch.clientY - dragStart.y;
+      onUpdateState({
+        imageXOffset: (state.imageXOffset || 0) + dx,
+        imageYOffset: (state.imageYOffset || 0) + dy
+      });
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+      e.preventDefault();
+      return;
+    }
 
     const rect = canvas.getBoundingClientRect();
-    let y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
-    let x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
-
+    let y = ((touch.clientY - rect.top) / rect.height) * 100;
+    let x = ((touch.clientX - rect.left) / rect.width) * 100;
     const active: { x?: number; y?: number } = {};
-
     for (const snapX of SNAP_POINTS_X) {
-      if (Math.abs(x - snapX) < SNAP_THRESHOLD) {
-        x = snapX;
-        active.x = snapX;
-        break;
-      }
+      if (Math.abs(x - snapX) < SNAP_THRESHOLD) { x = snapX; active.x = snapX; break; }
     }
-
     const otherX = isDragging === 'top' ? (state.bottomX ?? 50) : (state.topX ?? 50);
-    if (Math.abs(x - otherX) < SNAP_THRESHOLD) {
-      x = otherX;
-      active.x = otherX;
-    }
-
-    if (Math.abs(y - 50) < SNAP_THRESHOLD) {
-      y = 50;
-      active.y = 50;
-    }
-
+    if (Math.abs(x - otherX) < SNAP_THRESHOLD) { x = otherX; active.x = otherX; }
+    if (Math.abs(y - 50) < SNAP_THRESHOLD) { y = 50; active.y = 50; }
     setActiveGuides(active);
-
     onUpdateState({
       [isDragging === 'top' ? 'topOffset' : 'bottomOffset']: y,
       [isDragging === 'top' ? 'topX' : 'bottomX']: x
     });
-
-    e.preventDefault(); // Keep focus on dragging
+    e.preventDefault();
   };
 
   const handleTouchEnd = () => {

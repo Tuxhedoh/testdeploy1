@@ -18,6 +18,9 @@ const App: React.FC = () => {
     topOffset: 5,
     bottomOffset: 95,
     style: 'classic',
+    imageScale: 1,
+    imageXOffset: 0,
+    imageYOffset: 0,
   });
 
   const [past, setPast] = useState<MemeState[]>([]);
@@ -181,7 +184,10 @@ const App: React.FC = () => {
           bottomText: res[0].bottom,
           topFontSize: DEFAULT_FONT_SIZE,
           bottomFontSize: DEFAULT_FONT_SIZE,
-          textColor: res[0].suggestedColor || '#ffffff'
+          textColor: res[0].suggestedColor || '#ffffff',
+          imageScale: 1,
+          imageXOffset: 0,
+          imageYOffset: 0,
         }));
       }
     } catch (err) {
@@ -563,6 +569,66 @@ const App: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Image Manual Transformation */}
+          <div className="bg-slate-900/60 backdrop-blur-md rounded-3xl p-6 border border-white/5 space-y-6 shadow-inner">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full" />
+              <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Image Layout</p>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center px-1">
+                  <span className="text-[9px] font-bold text-slate-600 uppercase">Scale</span>
+                  <span className="text-[9px] text-slate-600">{(memeState.imageScale || 1).toFixed(2)}x</span>
+                </div>
+                <input
+                  type="range" min="0.1" max="3" step="0.01"
+                  value={memeState.imageScale || 1}
+                  onChange={e => setMemeState(prev => ({ ...prev, imageScale: parseFloat(e.target.value) }))}
+                  onMouseUp={() => pushState(memeState)}
+                  className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[9px] font-bold text-slate-600 uppercase">Image X</span>
+                    <span className="text-[9px] text-slate-600">{Math.round(memeState.imageXOffset || 0)}px</span>
+                  </div>
+                  <input
+                    type="range" min="-400" max="400" step="1"
+                    value={memeState.imageXOffset || 0}
+                    onChange={e => setMemeState(prev => ({ ...prev, imageXOffset: parseInt(e.target.value) }))}
+                    onMouseUp={() => pushState(memeState)}
+                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-center px-1">
+                    <span className="text-[9px] font-bold text-slate-600 uppercase">Image Y</span>
+                    <span className="text-[9px] text-slate-600">{Math.round(memeState.imageYOffset || 0)}px</span>
+                  </div>
+                  <input
+                    type="range" min="-400" max="400" step="1"
+                    value={memeState.imageYOffset || 0}
+                    onChange={e => setMemeState(prev => ({ ...prev, imageYOffset: parseInt(e.target.value) }))}
+                    onMouseUp={() => pushState(memeState)}
+                    className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={() => pushState(prev => ({ ...prev, imageScale: 1, imageXOffset: 0, imageYOffset: 0 }))}
+                className="w-full py-2 rounded-xl text-[9px] font-black uppercase tracking-widest bg-white/5 hover:bg-white/10 text-slate-500 hover:text-white transition-all border border-white/5"
+              >
+                Reset Image Transform
+              </button>
             </div>
           </div>
 

@@ -15,6 +15,9 @@ export interface MemeState {
   topX?: number;       // % from left
   bottomX?: number;    // % from left
   style: MemeStyle;
+  imageScale?: number;
+  imageXOffset?: number;
+  imageYOffset?: number;
 }
 
 export interface MemeTemplate {
